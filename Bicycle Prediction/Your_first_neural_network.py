@@ -5,7 +5,7 @@
 # 
 # 在此项目中，你将构建你的第一个神经网络，并用该网络预测每日自行车租客人数。我们提供了一些代码，但是需要你来实现神经网络（大部分内容）。提交此项目后，欢迎进一步探索该数据和模型。
 
-# In[1]:
+# In[4]:
 
 get_ipython().magic('matplotlib inline')
 get_ipython().magic("config InlineBackend.figure_format = 'retina'")
@@ -19,14 +19,14 @@ import matplotlib.pyplot as plt
 # 
 # 构建神经网络的关键一步是正确地准备数据。不同尺度级别的变量使网络难以高效地掌握正确的权重。我们在下方已经提供了加载和准备数据的代码。你很快将进一步学习这些代码！
 
-# In[2]:
+# In[5]:
 
 data_path = 'Bike-Sharing-Dataset/hour.csv'
 
 rides = pd.read_csv(data_path)
 
 
-# In[3]:
+# In[6]:
 
 rides.head()
 
@@ -37,7 +37,7 @@ rides.head()
 # 
 # 下图展示的是数据集中前 10 天左右的骑车人数（某些天不一定是 24 个条目，所以不是精确的 10 天）。你可以在这里看到每小时租金。这些数据很复杂！周末的骑行人数少些，工作日上下班期间是骑行高峰期。我们还可以从上方的数据中看到温度、湿度和风速信息，所有这些信息都会影响骑行人数。你需要用你的模型展示所有这些数据。
 
-# In[4]:
+# In[7]:
 
 rides[:24*10].plot(x='dteday', y='cnt')
 
@@ -46,7 +46,7 @@ rides[:24*10].plot(x='dteday', y='cnt')
 # 
 # 下面是一些分类变量，例如季节、天气、月份。要在我们的模型中包含这些数据，我们需要创建二进制虚拟变量。用 Pandas 库中的 `get_dummies()` 就可以轻松实现。
 
-# In[5]:
+# In[8]:
 
 dummy_fields = ['season', 'weathersit', 'mnth', 'hr', 'weekday']
 for each in dummy_fields:
@@ -65,7 +65,7 @@ data.head()
 # 
 # 我们会保存换算因子，以便当我们使用网络进行预测时可以还原数据。
 
-# In[6]:
+# In[9]:
 
 quant_features = ['casual', 'registered', 'cnt', 'temp', 'hum', 'windspeed']
 # Store scalings in a dictionary so we can convert back later
@@ -80,7 +80,7 @@ for each in quant_features:
 # 
 # 我们将大约最后 21 天的数据保存为测试数据集，这些数据集会在训练完网络后使用。我们将使用该数据集进行预测，并与实际的骑行人数进行对比。
 
-# In[7]:
+# In[10]:
 
 # Save data for approximately the last 21 days 
 test_data = data[-21*24:]
@@ -96,7 +96,7 @@ test_features, test_targets = test_data.drop(target_fields, axis=1), test_data[t
 
 # 我们将数据拆分为两个数据集，一个用作训练，一个在网络训练完后用来验证网络。因为数据是有时间序列特性的，所以我们用历史数据进行训练，然后尝试预测未来数据（验证数据集）。
 
-# In[8]:
+# In[11]:
 
 # Hold out the last 60 days or so of the remaining data as a validation set
 train_features, train_targets = features[:-60*24], targets[:-60*24]
@@ -125,176 +125,68 @@ val_features, val_targets = features[-60*24:], targets[-60*24:]
 # 
 #   
 
-# In[100]:
-
-import numpy as np
-x = np.array([0.5, 0.1, -0.2])
-x[:, None].shape
-
-
-# In[102]:
-
-x.T.shape
-
-
-# In[120]:
+# In[12]:
 
 class NeuralNetwork(object):
-    def __init__(self, input_nodes, hidden_nodes1,hidden_nodes2, hidden_nodes3, output_nodes, learning_rate):
+    def __init__(self, input_nodes, hidden_nodes, output_nodes, learning_rate):
         # Set number of nodes in input, hidden and output layers.
         self.input_nodes = input_nodes
-        self.hidden_nodes1 = hidden_nodes1
-        self.hidden_nodes2 = hidden_nodes2
-        self.hidden_nodes3 = hidden_nodes3
+        self.hidden_nodes = hidden_nodes
         self.output_nodes = output_nodes
 
-        # Initialize weights
-        self.weights_input_to_hidden1 = np.random.normal(0.0, self.input_nodes**-0.5, 
-                                       (self.input_nodes, self.hidden_nodes1))
-        
-        self.weights_hidden1_to_hidden2 = np.random.normal(0.0, self.hidden_nodes1**-0.5, 
-                                       (self.hidden_nodes1, self.hidden_nodes2))
-        self.weights_hidden2_to_hidden3 = np.random.normal(0.0, self.hidden_nodes2**-0.5, 
-                                       (self.hidden_nodes2, self.hidden_nodes3))
-        self.weights_hidden3_to_output = np.random.normal(0.0, self.hidden_nodes3**-0.5, 
-                                       (self.hidden_nodes3, self.output_nodes))
-        
-        
+            # Initialize weights
+        self.weights_input_to_hidden = np.random.normal(0.0, self.input_nodes**-0.5, (self.input_nodes, self.hidden_nodes))
+
+        self.weights_hidden_to_output = np.random.normal(0.0, self.hidden_nodes**-0.5, (self.hidden_nodes, self.output_nodes))
+    
         self.lr = learning_rate
-        
-        #### TODO: Set self.activation_function to your implemented sigmoid function ####
-        #
-        # Note: in Python, you can define a function with a lambda expression,
-        # as shown below.
-        self.activation_function = lambda x : 1 / (1 + np.exp(-x))  # Replace 0 with your sigmoid calculation.
-        
-        ### If the lambda code above is not something you're familiar with,
-        # You can uncomment out the following three lines and put your 
-        # implementation there instead.
-        #
-        #def sigmoid(x):
-        #    return 0  # Replace 0 with your sigmoid calculation here
-        #self.activation_function = sigmoid
-                    
     
+        ################
+        self.activation_function = lambda x : 1 / (1 + np.exp(-x))  
+        ################
+                
+
     def train(self, features, targets):
-        ''' Train the network on batch of features and targets. 
-        
-            Arguments
-            ---------
-            
-            features: 2D array, each row is one data record, each column is a feature
-            targets: 1D array of target values
-        
-        '''
+
         n_records = features.shape[0]
-        
-        delta_weights_i_h1 = np.zeros(self.weights_input_to_hidden1.shape)
-        delta_weights_h1_h2 = np.zeros(self.weights_hidden1_to_hidden2.shape)
-        delta_weights_h2_h3 = np.zeros(self.weights_hidden2_to_hidden3.shape)
-        delta_weights_h3_o = np.zeros(self.weights_hidden3_to_output.shape)
-        
+        delta_weights_i_h = np.zeros(self.weights_input_to_hidden.shape)
+        delta_weights_h_o = np.zeros(self.weights_hidden_to_output.shape)
         for X, y in zip(features, targets):
-            #### Implement the forward pass here ####
+     
             ### Forward pass ###
-            # TODO: Hidden layer - Replace these values with your calculations.
-            hidden1_inputs = np.dot(X, self.weights_input_to_hidden1) # signals into hidden layer
-            hidden1_outputs = self.activation_function(hidden1_inputs) # signals from hidden layer
+            hidden_inputs = np.dot(X,self.weights_input_to_hidden) 
+            hidden_outputs = self.activation_function(hidden_inputs) 
 
-            hidden2_inputs = np.dot(hidden1_outputs, self.weights_hidden1_to_hidden2) # signals into hidden layer
-            hidden2_outputs = self.activation_function(hidden2_inputs) # signals from hidden layer
-
-            hidden3_inputs = np.dot(hidden2_outputs, self.weights_hidden2_to_hidden3) # signals into hidden layer
-            hidden3_outputs = self.activation_function(hidden3_inputs) # signals from hidden layer
-#             print('hidden_outputs:', hidden_outputs)
-            
-            # TODO: Output layer - Replace these values with your calculations.
-            final_inputs = np.dot(hidden3_outputs, self.weights_hidden3_to_output) # signals into final output layer
-            final_outputs = final_inputs # signals from final output layer
-#             print('final_outputs:', final_outputs)
-            
-            #### Implement the backward pass here ####
-            ### Backward pass ###
-
-            # TODO: Output error - Replace this value with your calculations.
-            error = y - final_outputs # Output layer error is the difference between desired target and actual output.
-            output_error_term = error            
-            
-            # TODO: Backpropagated error terms - Replace these values with your calculations.
-
-#             print('output_error_term:',output_error_term)
-            
-            # TODO: Calculate the hidden layer's contribution to the error
-            hidden3_error = np.dot(self.weights_hidden3_to_output,output_error_term)
-            hidden3_error_term = hidden3_error * hidden3_outputs * (1-hidden3_outputs)
-            
-            hidden2_error = np.dot(self.weights_hidden2_to_hidden3,hidden3_error_term)
-            hidden2_error_term = hidden2_error * hidden2_outputs * (1-hidden2_outputs)
-            
-            hidden1_error = np.dot(self.weights_hidden1_to_hidden2,hidden2_error_term)
-            hidden1_error_term = hidden1_error * hidden1_outputs * (1-hidden1_outputs)
-#             print('hidden_error:', hidden_error)
-            
-
-           
-#             print('hidden_error_term:', hidden_error_term)
-            
-            
-            # Weight step (input to hidden)
-            delta_weights_i_h1 += hidden1_error_term * X[:, None]
-            delta_weights_h1_h2 += hidden2_error_term * hidden1_outputs[:, None]
-            delta_weights_h2_h3 += hidden3_error_term * hidden2_outputs[:, None]
-            delta_weights_h3_o += output_error_term * hidden3_outputs[:,None]
-#             print('delta_weights_i_h:', delta_weights_i_h)
-            # Weight step (hidden to output)
-            
-#             print(delta_weights_h_o.shape)
-#             print(output_error_term.shape,output_error_term)
-#             print(hidden_inputs.shape,hidden_inputs)
-#             print((output_error_term * hidden_inputs[:, None]).shape, output_error_term * hidden_inputs)
-
-#             print('delta_weights_h_o:', delta_weights_h_o)
-
-        # TODO: Update the weights - Replace these values with your calculations.
-        self.weights_hidden3_to_output += self.lr * delta_weights_h3_o / n_records # update hidden-to-output weights with gradient descent step
-        self.weights_hidden2_to_hidden3 += self.lr * delta_weights_h2_h3 / n_records
-        self.weights_hidden1_to_hidden2 += self.lr * delta_weights_h1_h2 / n_records
-        self.weights_input_to_hidden1 += self.lr * delta_weights_i_h1 / n_records # update input-to-hidden weights with gradient descent step
+            final_inputs =  np.dot(hidden_outputs,self.weights_hidden_to_output)
+            final_outputs =  final_inputs
         
-#         print('self.weights_input_to_hidden:',self.weights_input_to_hidden)
-#         print('self.weights_hidden_to_output:',self.weights_hidden_to_output)
+            ### Backward pass ###
+            error = y - final_outputs
+            
+            hidden_error = np.dot(error,self.weights_hidden_to_output.T)
+        
+            output_error_term = error 
+            hidden_error_term =  hidden_error * hidden_outputs * (1 - hidden_outputs)
     
-    
+            delta_weights_i_h +=  hidden_error_term * X[:,None]
+            delta_weights_h_o +=  output_error_term * hidden_outputs[:,None]
+
+        self.weights_hidden_to_output +=  self.lr * delta_weights_h_o / n_records
+        self.weights_input_to_hidden +=  self.lr * delta_weights_i_h / n_records
     
     def run(self, features):
-        ''' Run a forward pass through the network with input features 
-        
-            Arguments
-            ---------
-            features: 1D array of feature values
-        '''
-        
+
         #### Implement the forward pass here ####
-        # TODO: Hidden layer - replace these values with the appropriate calculations.
-        hidden1_inputs = np.dot(features, self.weights_input_to_hidden1) # signals into hidden layer
-        hidden1_outputs = self.activation_function(hidden1_inputs) # signals from hidden layer
-        hidden2_inputs = np.dot(hidden1_outputs, self.weights_hidden1_to_hidden2) # signals into hidden layer
-        hidden2_outputs = self.activation_function(hidden2_inputs) # signals from hidden layer
-        hidden3_inputs = np.dot(hidden2_outputs, self.weights_hidden2_to_hidden3) # signals into hidden layer
-        hidden3_outputs = self.activation_function(hidden3_inputs) # signals from hidden layer
-#         print('hidden_inputs:',hidden_inputs)
-#         print('hidden_outputs:',hidden_outputs)
+        hidden_inputs =  np.dot(features,self.weights_input_to_hidden)
+        hidden_outputs =  self.activation_function(hidden_inputs)
+    
+        final_inputs =  np.dot(hidden_outputs,self.weights_hidden_to_output)
+        final_outputs =  final_inputs
         
-        # TODO: Output layer - Replace these values with the appropriate calculations.
-        final_inputs = np.dot(hidden3_outputs, self.weights_hidden3_to_output) # signals into final output layer
-        final_outputs = final_inputs # signals from final output layer
-#         print('final_inputs:',final_inputs)
-#         print('final_outputs:',final_outputs)
-#         print('final_outputs:', final_outputs)
         return final_outputs
 
 
-# In[121]:
+# In[13]:
 
 def MSE(y, Y):
     return np.mean((y-Y)**2)
@@ -304,7 +196,7 @@ def MSE(y, Y):
 # 
 # 运行这些单元测试，检查你的网络实现是否正确。这样可以帮助你确保网络已正确实现，然后再开始训练网络。这些测试必须成功才能通过此项目。
 
-# In[122]:
+# In[15]:
 
 import unittest
 
@@ -338,27 +230,21 @@ class TestMethods(unittest.TestCase):
         network = NeuralNetwork(3, 2, 1, 0.5)
         # Test that the activation function is a sigmoid
         self.assertTrue(np.all(network.activation_function(0.5) == 1/(1+np.exp(-0.5))))
-#         print('1 done')
 
     def test_train(self):
         # Test that weights are updated correctly on training
         network = NeuralNetwork(3, 2, 1, 0.5)
-        
         network.weights_input_to_hidden = test_w_i_h.copy()
         network.weights_hidden_to_output = test_w_h_o.copy()
         
         network.train(inputs, targets)
-        
         self.assertTrue(np.allclose(network.weights_hidden_to_output, 
                                     np.array([[ 0.37275328], 
                                               [-0.03172939]])))
-        
-#         print('2 done')
         self.assertTrue(np.allclose(network.weights_input_to_hidden,
                                     np.array([[ 0.10562014, -0.20185996], 
                                               [0.39775194, 0.50074398], 
                                               [-0.29887597, 0.19962801]])))
-
 
     def test_run(self):
         # Test correctness of run method
@@ -392,26 +278,18 @@ unittest.TextTestRunner().run(suite)
 # 
 # 隐藏节点越多，模型的预测结果就越准确。尝试不同的隐藏节点的数量，看看对性能有何影响。你可以查看损失字典，寻找网络性能指标。如果隐藏单元的数量太少，那么模型就没有足够的空间进行学习，如果太多，则学习方向就有太多的选择。选择隐藏单元数量的技巧在于找到合适的平衡点。
 
-# In[229]:
-
-import random 
-random.seed=1307
-
-
-# In[235]:
+# In[17]:
 
 import sys
 
 ### Set the hyperparameters here ###
-iterations = 500
+iterations = 5000
 learning_rate = 0.5
-hidden1_nodes = 16
-hidden2_nodes = 8
-hidden3_nodes = 4
+hidden_nodes = 10
 output_nodes = 1
 
 N_i = train_features.shape[1]
-network = NeuralNetwork(N_i, hidden1_nodes,hidden2_nodes,hidden3_nodes,output_nodes, learning_rate)
+network = NeuralNetwork(N_i, hidden_nodes, output_nodes, learning_rate)
 
 losses = {'train':[], 'validation':[]}
 for ii in range(iterations):
@@ -431,7 +309,7 @@ for ii in range(iterations):
     losses['validation'].append(val_loss)
 
 
-# In[236]:
+# In[18]:
 
 plt.plot(losses['train'], label='Training loss')
 plt.plot(losses['validation'], label='Validation loss')
@@ -443,7 +321,7 @@ _ = plt.ylim()
 # 
 # 使用测试数据看看网络对数据建模的效果如何。如果完全错了，请确保网络中的每步都正确实现。
 
-# In[237]:
+# In[19]:
 
 fig, ax = plt.subplots(figsize=(8,4))
 
@@ -468,4 +346,3 @@ _ = ax.set_xticklabels(dates[12::24], rotation=45)
 # > **注意**：你可以通过双击该单元编辑文本。如果想要预览文本，请按 Control + Enter
 # 
 # #### 请将你的答案填写在下方
-# 
